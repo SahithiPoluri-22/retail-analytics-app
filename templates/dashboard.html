@@ -1,0 +1,58 @@
+{% extends "base.html" %}
+{% block title %}Dashboard — RetailIQ{% endblock %}
+
+{% block content %}
+<div class="fade-up">
+    <div class="page-header">
+        <h1>Analytics <span>Dashboard</span></h1>
+        <p>Retail KPIs across 400 households · 922,008 transactions</p>
+    </div>
+
+    <!-- Row 1 -->
+    <div class="grid-2" style="margin-bottom:1.5rem;">
+        <div class="chart-box"><div id="dept_spend" style="height:350px;"></div></div>
+        <div class="chart-box"><div id="spend_time" style="height:350px;"></div></div>
+    </div>
+
+    <!-- Row 2 -->
+    <div class="grid-2" style="margin-bottom:1.5rem;">
+        <div class="chart-box"><div id="loyalty_spend" style="height:350px;"></div></div>
+        <div class="chart-box"><div id="brand_spend" style="height:350px;"></div></div>
+    </div>
+
+    <!-- Row 3 -->
+    <div class="grid-2" style="margin-bottom:1.5rem;">
+        <div class="chart-box"><div id="income_spend" style="height:350px;"></div></div>
+        <div class="chart-box"><div id="region_spend" style="height:350px;"></div></div>
+    </div>
+</div>
+
+<script>
+    var charts = {
+        dept_spend:    {{ charts.dept_spend    | safe }},
+        spend_time:    {{ charts.spend_time    | safe }},
+        loyalty_spend: {{ charts.loyalty_spend | safe }},
+        brand_spend:   {{ charts.brand_spend   | safe }},
+        income_spend:  {{ charts.income_spend  | safe }},
+        region_spend:  {{ charts.region_spend  | safe }}
+    };
+
+    var base_layout = {
+        paper_bgcolor: 'rgba(0,0,0,0)',
+        plot_bgcolor:  'rgba(0,0,0,0)',
+        font: { color: '#e8e8f0', family: 'DM Sans, sans-serif' },
+        margin: { t: 50, l: 60, r: 20, b: 60 },
+        xaxis: { gridcolor: 'rgba(255,255,255,0.05)', zeroline: false },
+        yaxis: { gridcolor: 'rgba(255,255,255,0.05)', zeroline: false }
+    };
+
+    Object.keys(charts).forEach(function(id) {
+        var fig = charts[id];
+        // fig.layout wins — only fill in base values if not already set
+        var layout = Object.assign({}, base_layout, fig.layout);
+        layout.xaxis = Object.assign({}, base_layout.xaxis, fig.layout.xaxis || {});
+        layout.yaxis = Object.assign({}, base_layout.yaxis, fig.layout.yaxis || {});
+        Plotly.react(id, fig.data, layout, { responsive: true, displayModeBar: false });
+    });
+</script>
+{% endblock %}

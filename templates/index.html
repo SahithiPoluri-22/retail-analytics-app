@@ -1,0 +1,109 @@
+{% extends "base.html" %}
+{% block title %}Household Lookup — RetailIQ{% endblock %}
+
+{% block content %}
+<div class="fade-up">
+    <div class="page-header">
+        <h1>Household <span>Lookup</span></h1>
+        <p>Search transaction history for any household in the dataset</p>
+    </div>
+
+    <div class="card" style="margin-bottom: 2rem;">
+        <form method="POST" action="/">
+            <div style="display:flex; align-items:center; gap:1rem; flex-wrap:wrap;">
+                <div>
+                    <label style="display:block; font-size:0.78rem; font-weight:600; letter-spacing:0.08em; text-transform:uppercase; color:var(--muted); margin-bottom:0.5rem;">
+                        Household Number
+                    </label>
+                    <div class="input-group">
+                        <input type="number" name="hshd_num" placeholder="e.g. 10"
+                               value="{{ hshd_num or '' }}" min="1" required>
+                        <button type="submit" class="btn btn-primary">🔍 Search</button>
+                    </div>
+                </div>
+                <div style="margin-top:1.5rem; color:var(--muted); font-size:0.85rem;">
+                    Try: 10 · 29 · 53 · 54 · 60 · 81
+                </div>
+            </div>
+        </form>
+    </div>
+
+    {% if error %}
+        <div class="alert alert-error">⚠️ {{ error }}</div>
+    {% endif %}
+
+    {% if data %}
+    <div class="grid-3" style="margin-bottom:2rem;">
+        <div class="metric-card">
+            <div class="metric-label">Household #</div>
+            <div class="metric-value">{{ hshd_num }}</div>
+        </div>
+        <div class="metric-card">
+            <div class="metric-label">Total Transactions</div>
+            <div class="metric-value">{{ data|length }}</div>
+        </div>
+        <div class="metric-card">
+            <div class="metric-label">Total Spend</div>
+            <div class="metric-value" style="color:var(--pink);">
+                ${{ "%.2f"|format(data|sum(attribute='SPEND')) }}
+            </div>
+        </div>
+    </div>
+
+    <div class="card" style="margin-bottom:2rem;">
+        <div class="section-title">Household Profile</div>
+        <div style="display:flex; gap:1rem; flex-wrap:wrap;">
+            {% set h = data[0] %}
+            {% for key in ['LOYALTY_FLAG','AGE_RANGE','MARITAL','INCOME_RANGE','HOMEOWNER','HSHD_COMPOSITION','HH_SIZE','CHILDREN'] %}
+            <div style="background:rgba(0,245,212,0.05); border:1px solid rgba(0,245,212,0.15); border-radius:10px; padding:0.6rem 1rem;">
+                <div style="font-size:0.7rem; text-transform:uppercase; letter-spacing:0.08em; color:var(--muted); margin-bottom:0.2rem;">{{ key.replace('_',' ') }}</div>
+                <div style="font-weight:600; font-size:0.9rem; color:var(--cyan);">{{ h[key] or '—' }}</div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+
+    <div class="card">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem;">
+            <div class="section-title" style="margin-bottom:0;">Transaction History</div>
+            <span class="stat-badge">{{ data|length }} records</span>
+        </div>
+        <div class="table-wrap">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Basket #</th><th>Date</th><th>Product #</th>
+                        <th>Department</th><th>Commodity</th><th>Spend</th>
+                        <th>Units</th><th>Region</th><th>Week</th><th>Year</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for row in data %}
+                    <tr>
+                        <td>{{ row.BASKET_NUM }}</td>
+                        <td>{{ row.PURCHASE_ }}</td>
+                        <td>{{ row.PRODUCT_NUM }}</td>
+                        <td>{{ row.DEPARTMENT }}</td>
+                        <td>{{ row.COMMODITY }}</td>
+                        <td style="color:var(--cyan); font-weight:600;">${{ "%.2f"|format(row.SPEND) }}</td>
+                        <td>{{ row.UNITS }}</td>
+                        <td>{{ row.STORE_R }}</td>
+                        <td>{{ row.WEEK_NUM }}</td>
+                        <td>{{ row.YEAR }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+    {% endif %}
+
+    {% if not data and not error %}
+    <div style="text-align:center; padding:4rem 2rem; color:var(--muted);">
+        <div style="font-size:3rem; margin-bottom:1rem;">🏠</div>
+        <div style="font-family:'Syne',sans-serif; font-size:1.2rem; font-weight:700; color:var(--text); margin-bottom:0.5rem;">Enter a Household Number</div>
+        <div style="font-size:0.9rem;">Search to view complete transaction history, spend patterns, and household demographics.</div>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

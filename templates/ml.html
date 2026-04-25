@@ -1,0 +1,95 @@
+{% extends "base.html" %}
+{% block title %}CLV Prediction — RetailIQ{% endblock %}
+
+{% block content %}
+<div class="fade-up">
+    <div class="page-header">
+        <h1>Customer Lifetime <span>Value</span></h1>
+        <p>Gradient Boosting model predicting long-term revenue potential per household</p>
+    </div>
+
+    <div class="grid-3" style="margin-bottom:2rem;">
+        <div class="metric-card">
+            <div class="metric-label">Model</div>
+            <div class="metric-value" style="font-size:1.2rem; color:var(--yellow);">Gradient Boosting</div>
+        </div>
+        <div class="metric-card">
+            <div class="metric-label">R² Score</div>
+            <div class="metric-value" style="color:var(--cyan);">{{ r2 }}</div>
+        </div>
+        <div class="metric-card">
+            <div class="metric-label">RMSE</div>
+            <div class="metric-value" style="color:var(--pink);">${{ rmse }}</div>
+        </div>
+    </div>
+
+    <div class="card" style="margin-bottom:2rem;">
+        <div class="section-title">📖 Model Write-Up</div>
+        <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:1.5rem; margin-top:1rem;">
+            <div style="padding:1.25rem; background:rgba(0,245,212,0.04); border:1px solid rgba(0,245,212,0.12); border-radius:12px;">
+                <div style="font-family:'Syne',sans-serif; font-weight:700; color:var(--cyan); margin-bottom:0.6rem;">Linear Regression</div>
+                <p style="font-size:0.85rem; color:var(--muted); line-height:1.6;">A foundational supervised learning algorithm that models the relationship between input features and a continuous target variable by fitting a straight line through the data. It minimizes the sum of squared residuals. Best suited for problems with a roughly linear relationship. Simple, interpretable, and fast — but limited when data contains complex non-linear patterns.</p>
+            </div>
+            <div style="padding:1.25rem; background:rgba(155,93,229,0.06); border:1px solid rgba(155,93,229,0.2); border-radius:12px;">
+                <div style="font-family:'Syne',sans-serif; font-weight:700; color:var(--purple); margin-bottom:0.6rem;">Random Forest</div>
+                <p style="font-size:0.85rem; color:var(--muted); line-height:1.6;">An ensemble method that builds multiple decision trees on random subsets of the data and averages their predictions. This reduces overfitting and variance compared to a single tree. Handles non-linearity well, robust to outliers, and provides feature importance scores. Works well out of the box — ideal for retail datasets with mixed categorical and numerical features.</p>
+            </div>
+            <div style="padding:1.25rem; background:rgba(254,228,64,0.05); border:1px solid rgba(254,228,64,0.15); border-radius:12px;">
+                <div style="font-family:'Syne',sans-serif; font-weight:700; color:var(--yellow); margin-bottom:0.6rem;">Gradient Boosting ✓ Selected</div>
+                <p style="font-size:0.85rem; color:var(--muted); line-height:1.6;">A sequential ensemble technique where each new tree corrects the errors of the previous ones via gradient descent. Typically achieves higher accuracy than Random Forest on structured/tabular data. Selected for CLV prediction because household spending patterns are complex and non-linear — Gradient Boosting excels at capturing such relationships with high precision.</p>
+            </div>
+        </div>
+    </div>
+
+    <div class="chart-box" style="margin-bottom:2rem;">
+        <div id="feature_chart"></div>
+    </div>
+
+    <div class="card">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem;">
+            <div class="section-title" style="margin-bottom:0;">🏆 Top 10 Predicted High-Value Customers</div>
+            <span class="stat-badge">CLV Ranked</span>
+        </div>
+        <div class="table-wrap">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Rank</th><th>Household #</th><th>Actual CLV ($)</th>
+                        <th>Predicted CLV ($)</th><th>Variance</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for row in top10 %}
+                    <tr>
+                        <td>
+                            {% if loop.index == 1 %}🥇
+                            {% elif loop.index == 2 %}🥈
+                            {% elif loop.index == 3 %}🥉
+                            {% else %}#{{ loop.index }}{% endif %}
+                        </td>
+                        <td style="font-weight:600; color:var(--cyan);">{{ row['Household #'] }}</td>
+                        <td>${{ "%.2f"|format(row['Actual CLV ($)']) }}</td>
+                        <td style="color:var(--yellow); font-weight:600;">${{ "%.2f"|format(row['Predicted CLV ($)']) }}</td>
+                        <td style="color:{% if row['Predicted CLV ($)'] > row['Actual CLV ($)'] %}var(--cyan){% else %}var(--pink){% endif %};">
+                            {{ "%+.2f"|format(row['Predicted CLV ($)'] - row['Actual CLV ($)']) }}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<script>
+    const fig = JSON.parse({{ chart | tojson }});
+    const layout = Object.assign({}, fig.layout, {
+        paper_bgcolor: 'rgba(0,0,0,0)', plot_bgcolor: 'rgba(0,0,0,0)',
+        font: { color: '#e8e8f0', family: 'DM Sans' },
+        margin: { t: 50, l: 140, r: 20, b: 40 },
+        xaxis: { gridcolor: 'rgba(255,255,255,0.05)' },
+        yaxis: { gridcolor: 'rgba(255,255,255,0.05)' },
+    });
+    Plotly.newPlot('feature_chart', fig.data, layout, { responsive: true, displayModeBar: false });
+</script>
+{% endblock %}

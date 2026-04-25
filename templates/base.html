@@ -1,0 +1,337 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Retail Analytics{% endblock %}</title>
+    <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+    <style>
+        :root {
+            --bg:        #0a0a0f;
+            --surface:   #13131a;
+            --border:    #1e1e2e;
+            --cyan:      #00f5d4;
+            --pink:      #f15bb5;
+            --yellow:    #fee440;
+            --purple:    #9b5de5;
+            --text:      #e8e8f0;
+            --muted:     #6b6b80;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: 'DM Sans', sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            min-height: 100vh;
+        }
+
+        /* Animated background grid */
+        body::before {
+            content: '';
+            position: fixed;
+            inset: 0;
+            background-image:
+                linear-gradient(rgba(0,245,212,0.03) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(0,245,212,0.03) 1px, transparent 1px);
+            background-size: 40px 40px;
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        /* NAVBAR */
+        nav {
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            background: rgba(10,10,15,0.85);
+            backdrop-filter: blur(20px);
+            border-bottom: 1px solid var(--border);
+            padding: 0 2rem;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            height: 64px;
+        }
+
+        .nav-brand {
+            font-family: 'Syne', sans-serif;
+            font-weight: 800;
+            font-size: 1.2rem;
+            letter-spacing: -0.02em;
+            background: linear-gradient(135deg, var(--cyan), var(--purple));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .nav-links { display: flex; gap: 0.5rem; }
+
+        .nav-links a {
+            font-family: 'DM Sans', sans-serif;
+            font-size: 0.875rem;
+            font-weight: 500;
+            color: var(--muted);
+            text-decoration: none;
+            padding: 0.5rem 1rem;
+            border-radius: 8px;
+            transition: all 0.2s;
+            border: 1px solid transparent;
+        }
+
+        .nav-links a:hover,
+        .nav-links a.active {
+            color: var(--cyan);
+            background: rgba(0,245,212,0.08);
+            border-color: rgba(0,245,212,0.2);
+        }
+
+        /* MAIN CONTENT */
+        main {
+            position: relative;
+            z-index: 1;
+            max-width: 1280px;
+            margin: 0 auto;
+            padding: 2.5rem 2rem;
+        }
+
+        /* PAGE HEADER */
+        .page-header {
+            margin-bottom: 2.5rem;
+        }
+
+        .page-header h1 {
+            font-family: 'Syne', sans-serif;
+            font-weight: 800;
+            font-size: 2.5rem;
+            letter-spacing: -0.03em;
+            line-height: 1.1;
+        }
+
+        .page-header h1 span {
+            background: linear-gradient(135deg, var(--cyan), var(--pink));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .page-header p {
+            color: var(--muted);
+            margin-top: 0.5rem;
+            font-size: 1rem;
+        }
+
+        /* CARDS */
+        .card {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            padding: 1.75rem;
+            transition: border-color 0.2s;
+        }
+
+        .card:hover { border-color: rgba(0,245,212,0.2); }
+
+        /* GRID */
+        .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; }
+        .grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 1.5rem; }
+
+        /* STAT BADGES */
+        .stat-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.4rem;
+            background: rgba(0,245,212,0.08);
+            border: 1px solid rgba(0,245,212,0.2);
+            border-radius: 100px;
+            padding: 0.3rem 0.8rem;
+            font-size: 0.8rem;
+            color: var(--cyan);
+            font-weight: 500;
+        }
+
+        /* BUTTONS */
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.75rem 1.5rem;
+            border-radius: 10px;
+            font-family: 'DM Sans', sans-serif;
+            font-weight: 500;
+            font-size: 0.9rem;
+            cursor: pointer;
+            transition: all 0.2s;
+            border: none;
+            text-decoration: none;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, var(--cyan), var(--purple));
+            color: #000;
+            font-weight: 700;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 8px 25px rgba(0,245,212,0.3);
+        }
+
+        /* INPUTS */
+        .input-group {
+            display: flex;
+            gap: 0.75rem;
+            align-items: center;
+        }
+
+        input[type="text"], input[type="number"] {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            padding: 0.75rem 1.25rem;
+            color: var(--text);
+            font-family: 'DM Sans', sans-serif;
+            font-size: 0.95rem;
+            outline: none;
+            transition: border-color 0.2s;
+            width: 220px;
+        }
+
+        input:focus { border-color: var(--cyan); }
+
+        /* TABLE */
+        .table-wrap {
+            overflow-x: auto;
+            border-radius: 12px;
+            border: 1px solid var(--border);
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.82rem;
+        }
+
+        thead th {
+            background: rgba(0,245,212,0.06);
+            color: var(--cyan);
+            font-family: 'Syne', sans-serif;
+            font-weight: 600;
+            font-size: 0.75rem;
+            letter-spacing: 0.05em;
+            text-transform: uppercase;
+            padding: 0.85rem 1rem;
+            text-align: left;
+            border-bottom: 1px solid var(--border);
+            white-space: nowrap;
+        }
+
+        tbody tr {
+            border-bottom: 1px solid rgba(30,30,46,0.8);
+            transition: background 0.15s;
+        }
+
+        tbody tr:hover { background: rgba(0,245,212,0.03); }
+        tbody td { padding: 0.75rem 1rem; color: var(--text); white-space: nowrap; }
+
+        /* METRIC CARDS */
+        .metric-card {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            padding: 1.5rem;
+            display: flex;
+            flex-direction: column;
+            gap: 0.4rem;
+        }
+
+        .metric-label {
+            font-size: 0.78rem;
+            font-weight: 600;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+            color: var(--muted);
+        }
+
+        .metric-value {
+            font-family: 'Syne', sans-serif;
+            font-size: 2rem;
+            font-weight: 800;
+            letter-spacing: -0.03em;
+            color: var(--cyan);
+        }
+
+        /* CHART CONTAINERS */
+        .chart-box {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            padding: 1.25rem;
+            min-height: 360px;
+        }
+
+        /* ALERTS */
+        .alert {
+            padding: 1rem 1.25rem;
+            border-radius: 10px;
+            font-size: 0.9rem;
+            margin-top: 1rem;
+        }
+
+        .alert-error {
+            background: rgba(241,91,181,0.1);
+            border: 1px solid rgba(241,91,181,0.3);
+            color: var(--pink);
+        }
+
+        /* SECTION TITLE */
+        .section-title {
+            font-family: 'Syne', sans-serif;
+            font-weight: 700;
+            font-size: 1.1rem;
+            margin-bottom: 1rem;
+            color: var(--text);
+        }
+
+        /* FADE IN ANIMATION */
+        @keyframes fadeUp {
+            from { opacity: 0; transform: translateY(16px); }
+            to   { opacity: 1; transform: translateY(0); }
+        }
+
+        .fade-up { animation: fadeUp 0.5s ease forwards; }
+
+        /* GLOW ACCENT */
+        .glow {
+            position: fixed;
+            width: 600px;
+            height: 600px;
+            border-radius: 50%;
+            filter: blur(120px);
+            pointer-events: none;
+            z-index: 0;
+            opacity: 0.12;
+        }
+
+        .glow-1 { background: var(--cyan);   top: -200px; left: -200px; }
+        .glow-2 { background: var(--purple); bottom: -200px; right: -200px; }
+    </style>
+</head>
+<body>
+    <div class="glow glow-1"></div>
+    <div class="glow glow-2"></div>
+
+    <nav>
+        <div class="nav-brand">🛒 RetailIQ</div>
+        <div class="nav-links">
+            <a href="/"          class="{{ 'active' if request.endpoint == 'index' }}">Household Lookup</a>
+            <a href="/dashboard" class="{{ 'active' if request.endpoint == 'dashboard' }}">Dashboard</a>
+            <a href="/ml"        class="{{ 'active' if request.endpoint == 'ml' }}">CLV Prediction</a>
+        </div>
+    </nav>
+
+    <main>
+        {% block content %}{% endblock %}
+    </main>
+</body>
+</html>
