@@ -1,5 +1,5 @@
-from flask import Flask, render_template, request
-from db import query_df
+from flask import Flask, render_template, request, redirect, url_for, session
+from db import query_df, get_engine
 import pandas as pd
 import plotly.express as px
 import plotly.utils
@@ -9,11 +9,121 @@ from sklearn.preprocessing import LabelEncoder
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import r2_score, mean_squared_error
 import numpy as np
+from functools import wraps
+from sqlalchemy import text
 
 app = Flask(__name__)
+app.secret_key = "retailiq-secret-2024"
+
+# ── IN-MEMORY USER STORE ──────────────────────────────────────
+# { username: password } — resets on server restart
+USERS = {
+    "admin": "retail2024"
+}
+
+# ── LOGIN REQUIRED DECORATOR ──────────────────────────────────
+def login_required(f):
+    @wraps(f)
+    def decorated(*args, **kwargs):
+        if not session.get("logged_in"):
+            return redirect(url_for("login"))
+        return f(*args, **kwargs)
+    return decorated
+
+
+# ── LOGIN ─────────────────────────────────────────────────────
+@app.route("/login", methods=["GET", "POST"])
+def login():
+    error = None
+    if request.method == "POST":
+        username = request.form.get("username", "").strip()
+        password = request.form.get("password", "").strip()
+        if username in USERS and USERS[username] == password:
+            session["logged_in"] = True
+            session["username"] = username
+            return redirect(url_for("index"))
+        else:
+            error = "Invalid username or password."
+    return render_template("login.html", error=error)
+
+
+# ── SIGNUP ────────────────────────────────────────────────────
+@app.route("/signup", methods=["GET", "POST"])
+def signup():
+    error = None
+    if request.method == "POST":
+        username = request.form.get("username", "").strip()
+        password = request.form.get("password", "").strip()
+        confirm  = request.form.get("confirm", "").strip()
+
+        if len(username) < 3:
+            error = "Username must be at least 3 characters."
+        elif username in USERS:
+            error = f"Username '{username}' is already taken."
+        elif password != confirm:
+            error = "Passwords do not match."
+        else:
+            USERS[username] = password
+            session["logged_in"] = True
+            session["username"] = username
+            return redirect(url_for("index"))
+
+    return render_template("signup.html", error=error)
+
+
+# ── LOGOUT ────────────────────────────────────────────────────
+@app.route("/logout")
+def logout():
+    session.clear()
+    return redirect(url_for("login"))
+
+
+# ── UPLOAD DATA ───────────────────────────────────────────────
+@app.route("/upload", methods=["GET", "POST"])
+@login_required
+def upload():
+    success = False
+    error = None
+
+    if request.method == "POST":
+        try:
+            hh_file = request.files.get("households")
+            tx_file = request.files.get("transactions")
+            pr_file = request.files.get("products")
+
+            if not (hh_file and tx_file and pr_file):
+                raise ValueError("All three CSV files are required.")
+
+            hh_df = pd.read_csv(hh_file)
+            tx_df = pd.read_csv(tx_file)
+            pr_df = pd.read_csv(pr_file)
+
+            for df in [hh_df, tx_df, pr_df]:
+                df.columns = df.columns.str.strip()
+                for col in df.select_dtypes(include="object").columns:
+                    df[col] = df[col].str.strip()
+
+            engine = get_engine()
+            with engine.begin() as conn:
+                conn.execute(text("DELETE FROM transactions"))
+                conn.execute(text("DELETE FROM products"))
+                conn.execute(text("DELETE FROM households"))
+
+            hh_df.to_sql("households", engine, if_exists="append", index=False, chunksize=500)
+            pr_df.to_sql("products",   engine, if_exists="append", index=False, chunksize=500)
+            tx_df.to_sql("transactions", engine, if_exists="append", index=False, chunksize=500)
+
+            success = True
+
+        except Exception as e:
+            error = str(e)
+
+    return render_template("upload.html", success=success, error=error)
+
 
 # ── HOME / HOUSEHOLD LOOKUP ──────────────────────────────────
 @app.route("/", methods=["GET", "POST"])
+@login_required
 def index():
     data, hshd_num, error = None, None, None
     if request.method == "POST":
@@ -63,6 +173,7 @@ def index():
 
 # ── DASHBOARD ────────────────────────────────────────────────
 @app.route("/dashboard")
+@login_required
 def dashboard():
     charts = {}
 
@@ -101,7 +212,7 @@ def dashboard():
         GROUP BY TRY_CAST(YEAR AS INT)
         ORDER BY TRY_CAST(YEAR AS INT)
     """)
-    df2["YEAR"] = df2["YEAR"].astype(str)   # ← string, not int
+    df2["YEAR"] = df2["YEAR"].astype(str)
     fig2 = px.line(df2, x="YEAR", y="TOTAL_SPEND",
                    title="Total Spend Over Time", markers=True)
     fig2.update_traces(line_color="#00f5d4", line_width=3, marker_size=10)
@@ -172,6 +283,7 @@ def dashboard():
 
 # ── ML MODEL — CLV PREDICTION ────────────────────────────────
 @app.route("/ml")
+@login_required
 def ml():
     clv_df = query_df("""
         SELECT CAST(t.HSHD_NUM AS INT) AS HSHD_NUM,

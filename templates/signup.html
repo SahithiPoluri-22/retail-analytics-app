@@ -1,0 +1,270 @@
+{% extends "base.html" %}
+{% block title %}Sign Up — RetailIQ{% endblock %}
+
+{% block content %}
+<div class="auth-wrap fade-up">
+    <div class="auth-card">
+        <div class="auth-logo">🛒 RetailIQ</div>
+        <h1 class="auth-title">Create account</h1>
+        <p class="auth-sub">Set up your RetailIQ access</p>
+
+        {% if error %}
+        <div class="auth-error">{{ error }}</div>
+        {% endif %}
+
+        <form method="POST" action="/signup" class="auth-form" id="signupForm" onsubmit="return validateSignup()">
+            <div class="field-group">
+                <label>Username</label>
+                <input type="text" name="username" id="su-username" placeholder="Choose a username" autocomplete="off" required minlength="3" />
+                <span class="field-hint">At least 3 characters</span>
+            </div>
+
+            <div class="field-group">
+                <label>Password</label>
+                <div class="input-wrap">
+                    <input type="password" name="password" id="su-password" placeholder="Choose a password"
+                        required oninput="checkStrength(this.value)" />
+                    <button type="button" class="toggle-pw" onclick="togglePw('su-password', this)">👁</button>
+                </div>
+                <!-- Strength bar -->
+                <div class="strength-bar"><div class="strength-fill" id="strengthFill"></div></div>
+                <span class="strength-label" id="strengthLabel"></span>
+                <!-- Requirements checklist -->
+                <ul class="pw-rules">
+                    <li id="rule-len">At least 8 characters</li>
+                    <li id="rule-upper">One uppercase letter</li>
+                    <li id="rule-num">One number</li>
+                    <li id="rule-special">One special character (!@#$...)</li>
+                </ul>
+            </div>
+
+            <div class="field-group">
+                <label>Confirm Password</label>
+                <div class="input-wrap">
+                    <input type="password" name="confirm" id="su-confirm" placeholder="Repeat your password"
+                        required oninput="checkMatch()" />
+                    <button type="button" class="toggle-pw" onclick="togglePw('su-confirm', this)">👁</button>
+                </div>
+                <span class="match-msg" id="matchMsg"></span>
+            </div>
+
+            <button type="submit" class="auth-btn">Create Account →</button>
+        </form>
+
+        <p class="auth-switch">Already have an account? <a href="/login">Sign in</a></p>
+    </div>
+</div>
+
+<!-- Popup overlay -->
+<div class="popup-overlay" id="popupOverlay">
+    <div class="popup-box">
+        <div class="popup-icon" id="popupIcon"></div>
+        <p class="popup-msg" id="popupMsg"></p>
+        <button class="popup-close" onclick="closePopup()">OK</button>
+    </div>
+</div>
+
+<style>
+.auth-wrap {
+    min-height: 80vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 2rem 0;
+}
+.auth-card {
+    background: rgba(255,255,255,0.03);
+    border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 24px;
+    padding: 3rem;
+    width: 100%;
+    max-width: 440px;
+    backdrop-filter: blur(20px);
+    box-shadow: 0 40px 80px rgba(0,0,0,0.4);
+}
+.auth-logo { font-size: 1.3rem; font-weight: 700; color: #00f5d4; margin-bottom: 1.5rem; }
+.auth-title { font-size: 2rem; font-weight: 800; color: #fff; margin: 0 0 0.4rem; }
+.auth-sub { color: rgba(255,255,255,0.4); margin: 0 0 2rem; font-size: 0.95rem; }
+.auth-error {
+    background: rgba(241,91,181,0.15);
+    border: 1px solid rgba(241,91,181,0.3);
+    color: #f15bb5;
+    padding: 0.75rem 1rem;
+    border-radius: 10px;
+    margin-bottom: 1.5rem;
+    font-size: 0.9rem;
+}
+.auth-form { display: flex; flex-direction: column; gap: 1.25rem; }
+.field-group { display: flex; flex-direction: column; gap: 0.4rem; }
+.field-group label {
+    font-size: 0.8rem; font-weight: 600; text-transform: uppercase;
+    letter-spacing: 0.08em; color: rgba(255,255,255,0.5);
+}
+.field-hint { font-size: 0.75rem; color: rgba(255,255,255,0.3); }
+.input-wrap { position: relative; }
+.field-group input {
+    width: 100%;
+    background: rgba(255,255,255,0.05);
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 10px;
+    padding: 0.85rem 1rem;
+    color: #fff;
+    font-size: 0.95rem;
+    font-family: inherit;
+    outline: none;
+    transition: border-color 0.2s;
+    box-sizing: border-box;
+}
+.field-group input:focus { border-color: #00f5d4; }
+.field-group input::placeholder { color: rgba(255,255,255,0.2); }
+.toggle-pw {
+    position: absolute; right: 0.75rem; top: 50%; transform: translateY(-50%);
+    background: none; border: none; cursor: pointer; font-size: 1rem; opacity: 0.5;
+}
+.toggle-pw:hover { opacity: 1; }
+/* Strength bar */
+.strength-bar {
+    height: 4px; background: rgba(255,255,255,0.08);
+    border-radius: 2px; margin-top: 0.4rem;
+}
+.strength-fill {
+    height: 100%; width: 0%; border-radius: 2px;
+    transition: width 0.3s, background 0.3s;
+}
+.strength-label { font-size: 0.75rem; color: rgba(255,255,255,0.4); }
+/* Rules */
+.pw-rules {
+    list-style: none; padding: 0; margin: 0.5rem 0 0;
+    display: flex; flex-direction: column; gap: 0.2rem;
+}
+.pw-rules li {
+    font-size: 0.78rem; color: rgba(255,255,255,0.3);
+    padding-left: 1.2rem; position: relative;
+    transition: color 0.2s;
+}
+.pw-rules li::before { content: '✗'; position: absolute; left: 0; color: #f15bb5; }
+.pw-rules li.pass { color: #00f5d4; }
+.pw-rules li.pass::before { content: '✓'; color: #00f5d4; }
+/* Match */
+.match-msg { font-size: 0.78rem; }
+.match-msg.ok { color: #00f5d4; }
+.match-msg.no { color: #f15bb5; }
+/* Button */
+.auth-btn {
+    margin-top: 0.5rem;
+    background: linear-gradient(135deg, #00f5d4, #9b5de5);
+    border: none; border-radius: 10px; padding: 0.9rem;
+    color: #0a0a0f; font-weight: 700; font-size: 1rem;
+    font-family: inherit; cursor: pointer;
+    transition: opacity 0.2s, transform 0.2s;
+}
+.auth-btn:hover { opacity: 0.9; transform: translateY(-1px); }
+.auth-switch { margin-top: 1.5rem; text-align: center; color: rgba(255,255,255,0.4); font-size: 0.9rem; }
+.auth-switch a { color: #00f5d4; text-decoration: none; font-weight: 600; }
+/* Popup */
+.popup-overlay {
+    display: none; position: fixed; inset: 0;
+    background: rgba(0,0,0,0.7); backdrop-filter: blur(4px);
+    z-index: 1000; align-items: center; justify-content: center;
+}
+.popup-overlay.show { display: flex; }
+.popup-box {
+    background: #1a1a2e; border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 20px; padding: 2.5rem; max-width: 360px;
+    width: 90%; text-align: center;
+    animation: popIn 0.3s ease;
+}
+@keyframes popIn {
+    from { transform: scale(0.8); opacity: 0; }
+    to { transform: scale(1); opacity: 1; }
+}
+.popup-icon { font-size: 3rem; margin-bottom: 1rem; }
+.popup-msg { color: rgba(255,255,255,0.8); font-size: 0.95rem; line-height: 1.5; margin: 0 0 1.5rem; }
+.popup-close {
+    background: linear-gradient(135deg, #00f5d4, #9b5de5);
+    border: none; border-radius: 8px; padding: 0.6rem 2rem;
+    color: #0a0a0f; font-weight: 700; font-family: inherit;
+    cursor: pointer; font-size: 0.9rem;
+}
+</style>
+
+<script>
+function togglePw(id, btn) {
+    var inp = document.getElementById(id);
+    inp.type = inp.type === 'password' ? 'text' : 'password';
+    btn.textContent = inp.type === 'password' ? '👁' : '🙈';
+}
+
+function showPopup(icon, msg) {
+    document.getElementById('popupIcon').textContent = icon;
+    document.getElementById('popupMsg').textContent = msg;
+    document.getElementById('popupOverlay').classList.add('show');
+}
+
+function closePopup() {
+    document.getElementById('popupOverlay').classList.remove('show');
+}
+
+function checkStrength(val) {
+    var rules = {
+        'rule-len':     val.length >= 8,
+        'rule-upper':   /[A-Z]/.test(val),
+        'rule-num':     /[0-9]/.test(val),
+        'rule-special': /[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(val)
+    };
+    var passed = Object.values(rules).filter(Boolean).length;
+    Object.keys(rules).forEach(function(id) {
+        document.getElementById(id).classList.toggle('pass', rules[id]);
+    });
+    var fill = document.getElementById('strengthFill');
+    var label = document.getElementById('strengthLabel');
+    var pct = (passed / 4) * 100;
+    fill.style.width = pct + '%';
+    if (passed <= 1) { fill.style.background = '#f15bb5'; label.textContent = 'Weak'; }
+    else if (passed <= 2) { fill.style.background = '#fee440'; label.textContent = 'Fair'; }
+    else if (passed <= 3) { fill.style.background = '#00bbf9'; label.textContent = 'Good'; }
+    else { fill.style.background = '#00f5d4'; label.textContent = 'Strong'; }
+}
+
+function checkMatch() {
+    var pw = document.getElementById('su-password').value;
+    var cf = document.getElementById('su-confirm').value;
+    var msg = document.getElementById('matchMsg');
+    if (!cf) { msg.textContent = ''; return; }
+    if (pw === cf) { msg.textContent = '✓ Passwords match'; msg.className = 'match-msg ok'; }
+    else { msg.textContent = '✗ Passwords do not match'; msg.className = 'match-msg no'; }
+}
+
+function validateSignup() {
+    var pw = document.getElementById('su-password').value;
+    var cf = document.getElementById('su-confirm').value;
+    var un = document.getElementById('su-username').value.trim();
+
+    if (un.length < 3) {
+        showPopup('⚠️', 'Username must be at least 3 characters long.');
+        return false;
+    }
+    if (pw.length < 8) {
+        showPopup('🔒', 'Password must be at least 8 characters long.');
+        return false;
+    }
+    if (!/[A-Z]/.test(pw)) {
+        showPopup('🔒', 'Password must contain at least one uppercase letter.');
+        return false;
+    }
+    if (!/[0-9]/.test(pw)) {
+        showPopup('🔒', 'Password must contain at least one number.');
+        return false;
+    }
+    if (!/[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(pw)) {
+        showPopup('🔒', 'Password must contain at least one special character.');
+        return false;
+    }
+    if (pw !== cf) {
+        showPopup('❌', 'Passwords do not match. Please try again.');
+        return false;
+    }
+    return true;
+}
+</script>
+{% endblock %}
